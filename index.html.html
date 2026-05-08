@@ -28,7 +28,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-        // 대표님의 고유 열쇠
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDXE_Z9_ifIe5g3sdk2j5u5rMk_UAVoGJ0",
             authDomain: "dalkkumfutureapp.firebaseapp.com",
@@ -61,6 +61,7 @@
         window.currentView = 'login'; 
         window.tempRegData = { emailVerified: false, sentCode: "" };
         let isDataLoaded = false;
+        let openInstructorId = null; // 강사 관리 탭 아코디언 상태
 
         // 🔥 실시간 데이터 동기화
         onSnapshot(dbRef, (docSnap) => {
@@ -73,25 +74,19 @@
                 window.users = defaultUsers;
                 window.saveDataToFirebase();
             }
-            
             if(window.currentUser) {
                 window.currentUser = window.users.find(u => u.id === window.currentUser.id);
             }
-
             isDataLoaded = true;
             if (window.renderApp) window.renderApp(); 
         });
 
-        // 🔥 데이터 클라우드 저장
         window.saveDataToFirebase = function() {
             setDoc(dbRef, {
                 users: window.users,
                 jobs: window.jobs,
                 applications: window.applications
-            }).catch(error => {
-                alert("데이터베이스 보안 규칙이 '테스트 모드'인지 꼭 확인해주세요!");
-                console.error(error);
-            });
+            }).catch(error => console.error(error));
         }
 
         // --- 화면 렌더링 로직 ---
@@ -108,57 +103,21 @@
                             <h1 class="text-3xl font-bold text-white tracking-tight">달꿈 Edu-Match</h1>
                         </div>
                         <div class="relative z-10 bg-white p-6 rounded-2xl shadow-xl">
-                            <h2 class="text-lg font-bold text-gray-800 mb-6 text-center">초대된 사용자만 접속 가능합니다</h2>
+                            <h2 class="text-lg font-bold text-gray-800 mb-6 text-center text-sm">초대된 사용자 전용 로그인</h2>
                             <div class="space-y-4">
-                                <div><label class="block text-xs font-bold text-gray-500 mb-1">아이디 (이름+휴대폰 뒤 4자리)</label><input type="text" id="loginId" class="w-full border-b-2 border-gray-200 px-2 py-2 focus:border-indigo-600 outline-none" placeholder="예: admin 또는 홍길동7890"></div>
-                                <div><label class="block text-xs font-bold text-gray-500 mb-1">비밀번호</label><input type="password" id="loginPw" class="w-full border-b-2 border-gray-200 px-2 py-2 focus:border-indigo-600 outline-none" placeholder="비밀번호 입력"></div>
+                                <div><label class="block text-xs font-bold text-gray-500 mb-1">아이디</label><input type="text" id="loginId" class="w-full border-b-2 border-gray-200 px-2 py-2 focus:border-indigo-600 outline-none text-sm" placeholder="예: 홍길동7890"></div>
+                                <div><label class="block text-xs font-bold text-gray-500 mb-1">비밀번호</label><input type="password" id="loginPw" class="w-full border-b-2 border-gray-200 px-2 py-2 focus:border-indigo-600 outline-none text-sm" placeholder="비밀번호 입력"></div>
                             </div>
                             <button onclick="window.handleLogin()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl mt-8 hover:bg-indigo-700 shadow-md">로그인</button>
-                            <div class="mt-6 text-center"><p class="text-xs text-gray-500">초대 코드가 있으신가요?</p><button onclick="window.changeView('register1')" class="text-sm font-bold text-indigo-600 mt-1 hover:underline">강사 회원가입</button></div>
+                            <div class="mt-6 text-center"><p class="text-xs text-gray-500">강사님, 첫 방문이신가요?</p><button onclick="window.changeView('register1')" class="text-sm font-bold text-indigo-600 mt-1 hover:underline">강사 회원가입</button></div>
                         </div>
                     </div>`;
                 return;
             }
 
-            if (currentView === 'register1') {
-                root.innerHTML = `
-                    <div class="flex flex-col h-full bg-white overflow-y-auto px-6 py-8">
-                        <h2 class="text-2xl font-bold text-indigo-800 mb-2">회원가입 (1/2)</h2>
-                        <div class="space-y-4">
-                            <div><label class="block text-sm font-bold text-gray-700 mb-1">이름</label><input type="text" id="regName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="실명 입력"></div>
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">이메일 인증</label>
-                                <div class="flex space-x-2"><input type="email" id="regEmail" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="이메일"><button onclick="window.sendVerificationCode()" class="bg-gray-200 px-3 py-2 rounded-lg text-sm font-bold whitespace-nowrap">전송</button></div>
-                            </div>
-                            <div id="verificationInputArea" class="hidden">
-                                <div class="flex space-x-2"><input type="text" id="regEmailCode" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="인증번호"><button onclick="window.verifyEmailCode()" class="bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-sm font-bold">확인</button></div>
-                                <p id="verificationMsg" class="text-xs mt-1 text-gray-500">인증번호를 입력해주세요.</p>
-                            </div>
-                            <div><label class="block text-sm font-bold text-gray-700 mb-1">전화번호</label><input type="tel" id="regPhone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="010-0000-0000"></div>
-                            <div><label class="block text-sm font-bold text-gray-700 mb-1">희망 비밀번호</label><input type="password" id="regPw" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="비밀번호 입력"></div>
-                        </div>
-                        <div class="flex space-x-3 mt-8 pb-8">
-                            <button onclick="window.changeView('login')" class="w-1/3 bg-gray-200 font-bold py-3 rounded-xl">취소</button>
-                            <button onclick="window.goToRegisterStep2()" class="w-2/3 bg-indigo-600 text-white font-bold py-3 rounded-xl">다음 ➔</button>
-                        </div>
-                    </div>`;
-                return;
-            }
-
-            if (currentView === 'register2') {
-                let subjectsHtml = allSubjects.map((sub, index) => `
-                    <div class="border-b py-3">
-                        <label class="flex items-center space-x-2 font-medium text-sm"><input type="checkbox" id="chk_sub_${index}" class="w-4 h-4 text-indigo-600"><span>${sub}</span></label>
-                    </div>`).join('');
-                root.innerHTML = `
-                    <div class="flex flex-col h-full bg-white px-6 py-8">
-                        <h2 class="text-2xl font-bold text-indigo-800 mb-2">회원가입 (2/2)</h2>
-                        <div class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-3 mb-4 shadow-inner">${subjectsHtml}</div>
-                        <div class="flex space-x-3 pb-4">
-                            <button onclick="window.changeView('register1')" class="w-1/3 bg-gray-200 font-bold py-3 rounded-xl">이전</button>
-                            <button onclick="window.submitRegistration()" class="w-2/3 bg-indigo-600 text-white font-bold py-3 rounded-xl">가입 완료</button>
-                        </div>
-                    </div>`;
+            // 회원가입 단계 1, 2 (생략 없이 유지)
+            if (currentView === 'register1' || currentView === 'register2') {
+                renderRegisterViews(root);
                 return;
             }
 
@@ -168,156 +127,308 @@
             if (currentUser.role === 'admin') {
                 if(currentView === 'admin-jobs') {
                     headerTitle = "출강 공고 관리";
-                    let jobsHtml = jobs.length === 0 ? `<div class="text-center text-gray-500 mt-20">등록된 공고가 없습니다.</div>` : jobs.map(j => `
-                        <div class="bg-white rounded-xl shadow-sm border p-4 mb-4">
-                            <div class="flex justify-between items-start mb-2">
-                                <h3 class="font-bold text-indigo-800">${j.school}</h3>
-                                ${j.isOpen ? `<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded">오픈됨</span>` : `<button onclick="window.forceOpenJob(${j.id})" class="bg-red-500 text-white text-[10px] px-2 py-1 rounded">즉시오픈</button>`}
-                            </div>
-                            <p class="text-xs text-gray-500 mb-3">📅 ${j.date} | ⏰ ${j.time || '-'}</p>
-                            <div class="bg-gray-50 p-2 rounded text-xs text-gray-700">
-                                <ul class="list-disc list-inside space-y-1">${j.subjects.map(sub => `<li>${sub}</li>`).join('')}</ul>
-                            </div>
-                        </div>`).join('');
-                    mainContent = `<div class="p-4 pb-20"><button onclick="window.changeView('admin-new-job')" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold mb-4">+ 새 출강 공고 작성</button>${jobsHtml}</div>`;
+                    mainContent = renderAdminJobs();
                 } else if(currentView === 'admin-new-job') {
                     headerTitle = "새 공고 작성";
-                    mainContent = `
-                        <div class="p-4 pb-24 space-y-3 bg-white min-h-full">
-                            <div><label class="text-xs font-bold text-gray-600">일정</label><input type="text" id="jobDate" class="w-full border-b py-2 text-sm" placeholder="0월 0일(0요일)"></div>
-                            <div><label class="text-xs font-bold text-gray-600">학교</label><input type="text" id="jobSchool" class="w-full border-b py-2 text-sm" placeholder="달꿈중학교"></div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-gray-600">대상</label><input type="text" id="jobTarget" class="w-full border-b py-2 text-sm" placeholder="1학년"></div>
-                                <div><label class="text-xs font-bold text-gray-600">강사료</label><input type="text" id="jobFee" class="w-full border-b py-2 text-sm" placeholder="12만원"></div>
-                            </div>
-                            <div><label class="text-xs font-bold text-gray-600">시간표</label><input type="text" id="jobTime" class="w-full border-b py-2 text-sm" placeholder="11:00~12:00"></div>
-                            <div class="pt-4 border-t"><label class="text-sm font-bold block mb-2">모집 수업</label><div id="jobSubjectsContainer" class="space-y-2 mb-3"></div><button onclick="window.addSubjectField()" class="w-full bg-indigo-50 text-indigo-600 py-2 rounded-lg text-sm font-bold">+ 수업 칸 추가</button></div>
-                            <div class="flex gap-2 mt-6"><button onclick="window.changeView('admin-jobs')" class="w-1/3 bg-gray-200 py-3 rounded-xl font-bold text-sm">취소</button><button onclick="window.submitNewJob()" class="w-2/3 bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm">등록</button></div>
-                        </div>`;
-                    setTimeout(() => { if(document.getElementById('jobSubjectsContainer') && document.getElementById('jobSubjectsContainer').children.length === 0) window.addSubjectField(); }, 0);
+                    mainContent = renderNewJobForm();
                 } else if(currentView === 'admin-apps') {
-                    headerTitle = "지원자 현황";
-                    let appHtml = applications.length === 0 ? `<div class="text-center text-gray-500 mt-20">지원자가 없습니다.</div>` : '';
-                    jobs.forEach(j => {
-                        let jobApps = applications.filter(a => a.jobId === j.id);
-                        if (jobApps.length > 0) {
-                            appHtml += `<div class="bg-white rounded-xl shadow border p-4 mb-5"><h3 class="font-bold text-indigo-800 text-sm mb-2">${j.school}</h3><div class="space-y-3">
-                                ${jobApps.map(a => `
-                                    <div class="bg-gray-50 p-3 rounded-lg border">
-                                        <div class="flex justify-between mb-1"><span class="font-bold text-sm">${a.instructorId}</span><span class="font-bold text-[10px]">${a.status}</span></div>
-                                        <p class="text-xs mb-2">${a.subjectIndex + 1}번. ${a.subjectName}</p>
-                                        <div class="flex space-x-2"><button onclick="window.manageApplication(${a.appId}, '수락')" class="flex-1 bg-blue-500 text-white py-1 rounded text-xs font-bold">수락</button><button onclick="window.manageApplication(${a.appId}, '반려')" class="flex-1 bg-red-500 text-white py-1 rounded text-xs font-bold">반려</button></div>
-                                    </div>
-                                `).join('')}</div></div>`;
-                        }
-                    });
-                    mainContent = `<div class="p-4 pb-20">${appHtml}</div>`;
+                    headerTitle = "지원 현황 및 수락";
+                    mainContent = renderAdminApplications();
                 } else if(currentView === 'admin-inst') {
-                    headerTitle = "강사 관리";
-                    let instHtml = users.filter(u => u.role === 'instructor').map(instructor => {
-                        let subCards = instructor.subjects.map((sub) => `
-                            <div class="bg-gray-50 p-2 rounded mb-2">
-                                <div class="flex justify-between mb-2"><p class="text-xs font-bold flex-1">${sub.name}</p><span class="text-[10px] font-bold px-2">${sub.status}</span></div>
-                                <p class="text-[10px] text-gray-500 mb-2">사유: ${sub.reason || '없음'}</p>
-                                <div class="flex space-x-1 justify-end"><button onclick="window.updateInstSubStatus('${instructor.id}', '${sub.name}', '승인')" class="bg-blue-500 text-white px-2 py-1 text-[10px] rounded font-bold">승인</button><button onclick="window.updateInstSubStatus('${instructor.id}', '${sub.name}', '반려')" class="bg-red-500 text-white px-2 py-1 text-[10px] rounded font-bold">반려</button></div>
-                            </div>`).join('');
-                        return `<div class="bg-white rounded-xl shadow border p-4 mb-4"><h3 class="font-bold text-lg mb-2">${instructor.name} (${instructor.id})</h3><div class="border-t pt-2">${subCards}</div></div>`;
-                    }).join('');
-                    mainContent = `<div class="p-4 pb-20">${instHtml}</div>`;
+                    headerTitle = "강사 인력 관리";
+                    mainContent = renderAdminInstructors();
                 }
-
-            } else { // 강사 화면
+            } else {
                 if(currentView === 'inst-jobs') {
-                    headerTitle = "출강 공고";
-                    let jobsHtml = jobs.length === 0 ? `<div class="text-center text-gray-500 mt-20">공고가 없습니다.</div>` : jobs.map(j => {
-                        if(!j.isOpen) return `<div class="bg-white rounded-xl shadow border p-4 mb-4 opacity-60"><h3 class="font-bold">${j.school} (오픈대기)</h3></div>`;
-                        let subjectsList = j.subjects.map((sub, index) => {
-                            let myApp = applications.find(a => a.jobId === j.id && a.instructorId === currentUser.id && a.subjectIndex === index);
-                            let isApproved = currentUser.subjects.some(userSub => userSub.name === sub && userSub.status === '승인');
-                            if (myApp) return `<div class="flex justify-between items-center bg-gray-50 p-2 rounded mb-2"><span class="text-xs font-medium w-2/3 truncate">${index + 1}. ${sub}</span><span class="text-[10px] font-bold">${myApp.status}됨</span></div>`;
-                            else if (isApproved) return `<div class="flex justify-between items-center bg-gray-50 p-2 rounded mb-2 border border-indigo-100"><span class="text-xs font-medium w-2/3 truncate">${index + 1}. ${sub}</span><button onclick="window.applyForSubject(${j.id}, '${sub}', ${index})" class="bg-indigo-600 text-white text-[10px] px-3 py-1 rounded font-bold">지원</button></div>`;
-                            else return `<div class="flex justify-between items-center bg-gray-50 p-2 rounded mb-2 opacity-50"><span class="text-xs text-gray-600 w-2/3 truncate">${index + 1}. ${sub}</span><span class="text-[10px]">자격없음</span></div>`;
-                        }).join('');
-                        return `<div class="bg-white rounded-xl shadow border border-indigo-100 p-4 mb-4"><h3 class="font-bold text-indigo-800">${j.school}</h3><p class="text-[11px] text-gray-500 mb-3">📅 ${j.date} | 💰 ${j.fee}</p><div>${subjectsList}</div></div>`;
-                    }).join('');
-                    mainContent = `<div class="p-4 pb-20">${jobsHtml}</div>`;
+                    headerTitle = "모집 중인 공고";
+                    mainContent = renderInstructorJobs();
                 } else if(currentView === 'inst-sched') {
                     headerTitle = "내 출강 일정";
-                    let myApps = applications.filter(a => a.instructorId === currentUser.id);
-                    let schedHtml = myApps.length === 0 ? `<div class="text-center text-gray-500 mt-20">지원한 일정이 없습니다.</div>` : myApps.map(a => {
-                        let job = jobs.find(j => j.id === a.jobId);
-                        return `<div class="bg-white p-4 rounded-xl shadow border mb-3"><div class="flex justify-between"><h3 class="font-bold text-sm">${job ? job.school : '-'}</h3><span class="text-[10px] font-bold bg-gray-200 px-2 py-1 rounded">${a.status}</span></div><p class="text-[11px] text-gray-500 mt-1">${job ? job.date : '-'}</p><div class="text-xs font-bold text-indigo-600 mt-2">${a.subjectIndex + 1}번: ${a.subjectName}</div></div>`;
-                    }).join('');
-                    mainContent = `<div class="p-4 pb-20">${schedHtml}</div>`;
+                    mainContent = renderInstructorSchedule();
                 } else if(currentView === 'inst-prof') {
                     headerTitle = "내 프로필";
-                    let mySubjectNames = currentUser.subjects.map(s => s.name);
-                    let mySubjectsHtml = currentUser.subjects.length === 0 ? `<p class="text-xs text-gray-500 py-2">없음</p>` : currentUser.subjects.map(sub => `<div class="flex justify-between border-b py-2"><span class="text-xs w-2/3 truncate">${sub.name}</span><span class="text-[10px] font-bold">${sub.status}</span></div>`).join('');
-                    let unappliedSubjects = allSubjects.filter(sub => !mySubjectNames.includes(sub));
-                    let unappliedHtml = unappliedSubjects.map(sub => `<div class="flex justify-between border-b py-2"><span class="text-[11px] text-gray-500 w-2/3 truncate">${sub}</span><button onclick="window.requestNewSubject('${sub}')" class="border border-indigo-300 text-indigo-600 text-[10px] font-bold px-2 py-1 rounded">+ 신청</button></div>`).join('');
-                    mainContent = `<div class="p-4 pb-20"><div class="bg-white rounded-xl shadow p-5 mb-4"><h3 class="font-bold">${currentUser.name} (${currentUser.id})</h3></div><div class="bg-white rounded-xl shadow p-5 mb-4"><h3 class="text-sm font-bold border-b pb-2">내 강의 자격</h3>${mySubjectsHtml}</div><div class="bg-gray-50 rounded-xl shadow border p-5"><h3 class="text-sm font-bold border-b pb-2">추가 자격 신청</h3>${unappliedHtml}</div></div>`;
+                    mainContent = renderInstructorProfile();
                 }
             }
 
-            let navBar = `<nav class="bg-white border-t border-gray-200 flex justify-around pb-6 pt-2 absolute bottom-0 w-full z-50">`;
+            root.innerHTML = `
+                <header class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center z-50 shrink-0">
+                    <h1 class="font-bold text-base">${headerTitle}</h1>
+                    <button onclick="window.handleLogout()" class="text-[10px] bg-indigo-500 px-3 py-1.5 rounded-full font-bold">로그아웃</button>
+                </header>
+                <main class="flex-1 overflow-y-auto bg-gray-100 relative">${mainContent}</main>
+                ${renderNavBar()}`;
+        };
+
+        // --- 디자인 유틸리티 함수들 ---
+
+        function renderNavBar() {
+            let nav = `<nav class="bg-white border-t border-gray-200 flex justify-around pb-6 pt-2 absolute bottom-0 w-full z-50">`;
             if(currentUser.role === 'admin') {
-                navBar += `
-                    <button onclick="window.changeView('admin-jobs')" class="flex flex-col items-center ${currentView.includes('job') ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/3"><span class="text-xl">📅</span><span class="text-[10px] font-bold mt-1">공고관리</span></button>
-                    <button onclick="window.changeView('admin-apps')" class="flex flex-col items-center ${currentView === 'admin-apps' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/3"><span class="text-xl">✅</span><span class="text-[10px] font-bold mt-1">지원현황</span></button>
-                    <button onclick="window.changeView('admin-inst')" class="flex flex-col items-center ${currentView === 'admin-inst' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/3"><span class="text-xl">👥</span><span class="text-[10px] font-bold mt-1">강사관리</span></button>`;
+                nav += `
+                    <button onclick="window.changeView('admin-jobs')" class="flex flex-col items-center ${currentView.includes('job') ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/4"><span class="text-xl">📅</span><span class="text-[10px] font-bold mt-1">공고관리</span></button>
+                    <button onclick="window.changeView('admin-apps')" class="flex flex-col items-center ${currentView === 'admin-apps' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/4"><span class="text-xl">✅</span><span class="text-[10px] font-bold mt-1">지원수락</span></button>
+                    <button onclick="window.changeView('admin-inst')" class="flex flex-col items-center ${currentView === 'admin-inst' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/4"><span class="text-xl">👥</span><span class="text-[10px] font-bold mt-1">강사관리</span></button>`;
             } else {
-                navBar += `
+                nav += `
                     <button onclick="window.changeView('inst-jobs')" class="flex flex-col items-center ${currentView === 'inst-jobs' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/3"><span class="text-xl">📅</span><span class="text-[10px] font-bold mt-1">출강공고</span></button>
                     <button onclick="window.changeView('inst-sched')" class="flex flex-col items-center ${currentView === 'inst-sched' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/3"><span class="text-xl">📋</span><span class="text-[10px] font-bold mt-1">내일정</span></button>
                     <button onclick="window.changeView('inst-prof')" class="flex flex-col items-center ${currentView === 'inst-prof' ? 'text-indigo-600' : 'text-gray-400'} p-2 w-1/3"><span class="text-xl">👤</span><span class="text-[10px] font-bold mt-1">프로필</span></button>`;
             }
-            navBar += `</nav>`;
+            return nav + `</nav>`;
+        }
 
-            root.innerHTML = `
-                <header class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center z-50 shrink-0">
-                    <h1 class="font-bold text-lg">${headerTitle}</h1>
-                    <button onclick="window.handleLogout()" class="text-xs bg-indigo-500 px-3 py-1.5 rounded-full font-bold">로그아웃</button>
-                </header>
-                <main class="flex-1 overflow-y-auto bg-gray-100 relative">${mainContent}</main>
-                ${navBar}`;
-        };
+        // 1번 요청: 공고 리스트 디자인 개편 (Admin/Instructor 공통 적용)
+        function renderJobCard(j, isInstructor = false) {
+            let subjectsList = j.subjects.map((sub, index) => {
+                let myApp = isInstructor ? applications.find(a => a.jobId === j.id && a.instructorId === currentUser.id && a.subjectIndex === index) : null;
+                let isApproved = isInstructor ? currentUser.subjects.some(us => us.name === sub && us.status === '승인') : false;
+                
+                let badge = "";
+                if(isInstructor) {
+                    if(myApp) badge = `<span class="text-[10px] font-bold text-indigo-600">[지원완료]</span>`;
+                    else if(isApproved) badge = `<button onclick="window.applyForSubject(${j.id}, '${sub}', ${index})" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded">지원</button>`;
+                    else badge = `<span class="text-[10px] text-gray-400">자격미달</span>`;
+                }
 
-        // --- 4. 동작 함수들 (클라우드 데이터 저장과 연결됨) ---
-        window.changeView = function(v) { currentView = v; window.renderApp(); }
-        window.goHome = function() { if(!currentUser) changeView('login'); else if(currentUser.role === 'admin') changeView('admin-jobs'); else changeView('inst-jobs'); }
+                return `<div class="flex justify-between items-center py-1.5 border-b last:border-0 border-gray-100"><span class="text-xs text-gray-700 font-medium">${index+1}. ${sub}</span>${badge}</div>`;
+            }).join('');
+
+            return `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <p class="text-lg font-extrabold text-indigo-600 leading-tight">${j.date}</p>
+                            <p class="text-sm font-bold text-gray-800 mt-1">${j.time || '시간 미지정'}</p>
+                        </div>
+                        ${!isInstructor ? (j.isOpen ? `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-md font-bold">모집중</span>` : `<button onclick="window.forceOpenJob(${j.id})" class="bg-red-500 text-white text-[10px] px-2 py-1 rounded-md">즉시오픈</button>`) : ``}
+                    </div>
+                    <div class="mb-4 bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                        <p class="text-sm font-bold text-gray-900">${j.school}</p>
+                        <p class="text-[11px] text-gray-600 mt-0.5">📍 ${j.target || '위치 정보 없음'}</p>
+                        <p class="text-[11px] text-gray-600 mt-0.5 font-bold">💰 강사료: ${j.fee}</p>
+                    </div>
+                    <div class="space-y-1">${subjectsList}</div>
+                </div>`;
+        }
+
+        function renderAdminJobs() {
+            let list = jobs.length === 0 ? `<p class="text-center mt-20 text-gray-400">등록된 공고가 없습니다.</p>` : jobs.map(j => renderJobCard(j)).join('');
+            return `<div class="p-4 pb-20"><button onclick="window.changeView('admin-new-job')" class="w-full bg-indigo-600 text-white py-3 rounded-2xl font-bold mb-6 shadow-lg shadow-indigo-100">+ 새 공고 등록</button>${list}</div>`;
+        }
+
+        function renderInstructorJobs() {
+            let list = jobs.filter(j => j.isOpen).length === 0 ? `<p class="text-center mt-20 text-gray-400">현재 모집중인 공고가 없습니다.</p>` : jobs.filter(j => j.isOpen).map(j => renderJobCard(j, true)).join('');
+            return `<div class="p-4 pb-20">${list}</div>`;
+        }
+
+        // 2번 요청: Admin 지원현황 수락 개편
+        function renderAdminApplications() {
+            let appHtml = applications.length === 0 ? `<p class="text-center mt-20 text-gray-400">지원한 강사가 없습니다.</p>` : '';
+            jobs.forEach(j => {
+                let jobApps = applications.filter(a => a.jobId === j.id);
+                if (jobApps.length > 0) {
+                    appHtml += `
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-6">
+                            <div class="mb-3 border-b pb-2">
+                                <p class="text-sm font-bold text-indigo-600">${j.date} ${j.time}</p>
+                                <p class="text-sm font-bold text-gray-800">${j.school}</p>
+                                <p class="text-[10px] text-gray-500">위치: ${j.target}</p>
+                            </div>
+                            <div class="space-y-3">
+                                ${jobApps.map(a => {
+                                    // 해당 강사가 이 공고에 이미 수락된 다른 수업이 있는지 체크
+                                    let isAlreadyAcceptedInThisJob = applications.some(other => other.jobId === j.id && other.instructorId === a.instructorId && other.status === '수락');
+                                    return `
+                                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                            <div class="flex justify-between items-center mb-1">
+                                                <span class="font-bold text-sm">${a.instructorId}</span>
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${a.status==='수락'?'bg-green-500 text-white':(a.status==='반려'?'bg-red-500 text-white':'bg-yellow-500 text-white')}">${a.status}</span>
+                                            </div>
+                                            <p class="text-xs text-gray-600 mb-3">${a.subjectIndex + 1}번. ${a.subjectName}</p>
+                                            <div class="flex gap-2">
+                                                <button onclick="window.manageApplication(${a.appId}, '수락')" class="flex-1 bg-blue-500 text-white py-1.5 rounded-lg text-[10px] font-bold ${isAlreadyAcceptedInThisJob && a.status !== '수락' ? 'opacity-50 grayscale cursor-not-allowed' : ''}">이 수업 수락</button>
+                                                <button onclick="window.manageApplication(${a.appId}, '반려')" class="flex-1 bg-red-400 text-white py-1.5 rounded-lg text-[10px] font-bold">반려</button>
+                                            </div>
+                                            ${isAlreadyAcceptedInThisJob && a.status !== '수락' ? `<p class="text-[9px] text-red-500 mt-1 font-medium">※ 이 강사는 이미 다른 슬롯에 수락되었습니다.</p>` : ''}
+                                        </div>`;
+                                }).join('')}
+                            </div>
+                        </div>`;
+                }
+            });
+            return `<div class="p-4 pb-20">${appHtml}</div>`;
+        }
+
+        // 3번 요청: 강사 내 일정 탭 개편
+        function renderInstructorSchedule() {
+            let myApps = applications.filter(a => a.instructorId === currentUser.id);
+            if (myApps.length === 0) return `<p class="text-center mt-20 text-gray-400">지원 내역이 없습니다.</p>`;
+
+            let confirmed = myApps.filter(a => a.status === '수락');
+            let pending = myApps.filter(a => a.status === '대기');
+
+            const renderAppCard = (a) => {
+                let j = jobs.find(job => job.id === a.jobId);
+                return `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-3">
+                        <p class="text-sm font-bold text-indigo-600">${j?.date || '-'} (${j?.time || '-'})</p>
+                        <p class="text-sm font-bold text-gray-800 mt-1">${j?.school || '-'}</p>
+                        <p class="text-[11px] text-gray-500">📍 ${j?.target || '-'}</p>
+                        <div class="mt-3 bg-gray-50 p-2 rounded-lg">
+                            <p class="text-xs font-bold text-gray-700">신청수업: ${a.subjectName}</p>
+                            <p class="text-[10px] text-gray-400">위치: ${a.subjectIndex + 1}번 수업</p>
+                        </div>
+                    </div>`;
+            };
+
+            return `
+                <div class="p-4 pb-20">
+                    <h3 class="text-sm font-bold text-indigo-800 mb-3 ml-1">✅ 확정된 일정</h3>
+                    ${confirmed.length > 0 ? confirmed.map(a => renderAppCard(a)).join('') : `<p class="text-xs text-gray-400 ml-1 mb-6">배정된 일정이 없습니다.</p>`}
+                    <h3 class="text-sm font-bold text-gray-600 mb-3 mt-6 ml-1">⏳ 대기 중인 일정</h3>
+                    ${pending.length > 0 ? pending.map(a => renderAppCard(a)).join('') : `<p class="text-xs text-gray-400 ml-1">대기 중인 일정이 없습니다.</p>`}
+                </div>`;
+        }
+
+        // 4번 요청: 강사 관리 개편 (가나다순 + 아코디언)
+        function renderAdminInstructors() {
+            let instructors = users.filter(u => u.role === 'instructor')
+                .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+            let instHtml = instructors.map(instructor => {
+                let isOpen = openInstructorId === instructor.id;
+                let subCards = instructor.subjects.map((sub) => `
+                    <div class="bg-white p-3 rounded-xl mb-2 border border-gray-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-xs font-bold text-gray-800">${sub.name}</p>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${sub.status==='승인'?'bg-blue-100 text-blue-600':'bg-yellow-100 text-yellow-600'}">${sub.status}</span>
+                        </div>
+                        <p class="text-[10px] text-gray-500">신청사유: ${sub.reason || '없음'}</p>
+                        <div class="flex space-x-1 justify-end mt-2">
+                            <button onclick="window.updateInstSubStatus('${instructor.id}', '${sub.name}', '승인')" class="bg-blue-500 text-white px-3 py-1 text-[10px] rounded-lg font-bold">승인</button>
+                            <button onclick="window.updateInstSubStatus('${instructor.id}', '${sub.name}', '반려')" class="bg-red-400 text-white px-3 py-1 text-[10px] rounded-lg font-bold ml-1">반려</button>
+                        </div>
+                    </div>`).join('');
+
+                return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-3 overflow-hidden">
+                        <button onclick="window.toggleAccordion('${instructor.id}')" class="w-full flex justify-between items-center p-4 focus:bg-indigo-50 transition">
+                            <div class="text-left">
+                                <p class="font-bold text-gray-800 text-sm">${instructor.name}</p>
+                                <p class="text-[10px] text-gray-500">${instructor.id} | ${instructor.phone || '-'}</p>
+                            </div>
+                            <span class="text-gray-400 text-xl transition transform ${isOpen ? 'rotate-180' : ''}">▾</span>
+                        </button>
+                        <div class="${isOpen ? 'block' : 'hidden'} bg-gray-50 p-3 border-t border-gray-100 animate-slide-down">
+                            ${subCards.length > 0 ? subCards : `<p class="text-[10px] text-gray-400 text-center py-4">신청한 수업 자격이 없습니다.</p>`}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            return `<div class="p-4 pb-20">${instHtml}</div>`;
+        }
+
+        // --- 기능 함수들 ---
+        window.toggleAccordion = function(id) {
+            openInstructorId = (openInstructorId === id) ? null : id;
+            renderApp();
+        }
+
+        window.updateInstSubStatus = function(iId, sN, st) {
+            let ins = users.find(u => u.id === iId);
+            if(ins) {
+                let s = ins.subjects.find(x => x.name === sN);
+                if(s) {
+                    s.status = st;
+                    window.saveDataToFirebase();
+                    alert(`[${ins.name}] 강사의 [${sN}] 자격을 [${st}] 처리했습니다.`);
+                }
+            }
+        }
+
+        window.manageApplication = function(appId, st) {
+            let app = applications.find(x => x.appId === appId);
+            if(!app) return;
+
+            if(st === '수락') {
+                // 한 공고에 같은 강사가 이미 수락되었는지 최종 확인
+                let already = applications.some(other => other.jobId === app.jobId && other.instructorId === app.instructorId && other.status === '수락');
+                if(already) return alert("이 강사는 이 공고의 다른 수업에 이미 배정되었습니다.");
+            }
+            
+            app.status = st;
+            window.saveDataToFirebase();
+            alert(`지원을 [${st}] 처리했습니다.`);
+        }
+
+        // 나머지 기본 기능 (로그인, 회원가입, 공고등록 등 기존 로직 유지)
         window.handleLogin = function() { const id = document.getElementById('loginId').value; const pw = document.getElementById('loginPw').value; const user = users.find(u => u.id === id && u.pw === pw); if (user) { currentUser = user; window.goHome(); } else { alert('아이디/비밀번호 오류입니다.'); } }
-        window.handleLogout = function() { currentUser = null; changeView('login'); }
-
-        window.sendVerificationCode = function() { const email = document.getElementById('regEmail').value; if(!email) return; tempRegData.sentCode = Math.floor(100000 + Math.random() * 900000).toString(); alert(`[달꿈] 테스트 인증번호: ${tempRegData.sentCode}`); document.getElementById('verificationInputArea').classList.remove('hidden'); }
-        window.verifyEmailCode = function() { if(document.getElementById('regEmailCode').value === tempRegData.sentCode) { tempRegData.emailVerified = true; document.getElementById('verificationMsg').innerText = "✅ 인증성공"; document.getElementById('verificationMsg').className="text-xs mt-1 text-green-600 font-bold"; } else alert("불일치"); }
-        window.goToRegisterStep2 = function() { const name = document.getElementById('regName').value, pw = document.getElementById('regPw').value, phone = document.getElementById('regPhone').value; if(!name||!pw||!phone||!tempRegData.emailVerified) return alert("입력 오류 또는 미인증"); const digitsOnly = phone.replace(/[^0-9]/g, ''); tempRegData.name = name; tempRegData.pw = pw; tempRegData.phone = phone; tempRegData.last4 = digitsOnly.slice(-4); changeView('register2'); }
-        
+        window.handleLogout = function() { currentUser = null; currentView = 'login'; renderApp(); }
+        window.goHome = function() { if(!currentUser) currentView = 'login'; else if(currentUser.role === 'admin') currentView = 'admin-jobs'; else currentView = 'inst-jobs'; renderApp(); }
+        window.changeView = function(v) { currentView = v; renderApp(); }
+        window.forceOpenJob = function(id) { let j = jobs.find(x => x.id === id); if(j) { j.isOpen = true; window.saveDataToFirebase(); } }
+        window.applyForSubject = function(jId, sN, sIdx) { applications.push({ appId: Date.now(), jobId: jId, instructorId: currentUser.id, subjectName: sN, subjectIndex: sIdx, status: '대기' }); window.saveDataToFirebase(); alert('지원을 완료했습니다!'); renderApp(); }
+        window.requestNewSubject = function(sN) { let r = prompt(`[${sN}] 자격 신청 사유를 입력해주세요:`); if(r && r.trim()!=='') { currentUser.subjects.push({ name: sN, status: '대기', reason: r }); window.saveDataToFirebase(); alert('자격 신청이 완료되었습니다.'); renderApp(); } }
+        window.addSubjectField = function() { const c = document.getElementById('jobSubjectsContainer'); const div = document.createElement('div'); div.className = "flex space-x-2"; let opt = allSubjects.map(sub => `<option value="${sub}">${sub}</option>`).join(''); div.innerHTML = `<select class="flex-1 border p-2 text-sm job-subject-select rounded-lg">${opt}</select><button onclick="this.parentElement.remove()" class="text-red-500 bg-red-50 px-3 font-bold rounded-lg">X</button>`; c.appendChild(div); }
+        window.submitNewJob = function() {
+            const date = document.getElementById('jobDate').value, school = document.getElementById('jobSchool').value, target = document.getElementById('jobTarget').value, fee = document.getElementById('jobFee').value, time = document.getElementById('jobTime').value;
+            const subs = Array.from(document.querySelectorAll('.job-subject-select')).map(s => s.value);
+            if(!date || !school || subs.length===0) return alert("필수 항목을 모두 채워주세요.");
+            jobs.push({ id: Date.now(), date, school, target, fee, time, subjects: subs, isOpen: false });
+            window.saveDataToFirebase();
+            alert('공고가 성공적으로 예약 등록되었습니다.'); currentView = 'admin-jobs'; renderApp();
+        }
+        window.sendVerificationCode = function() { const email = document.getElementById('regEmail').value; if(!email.includes('@')) return alert('이메일을 확인해주세요.'); tempRegData.sentCode = Math.floor(100000 + Math.random() * 900000).toString(); alert(`[달꿈] 테스트 인증번호: ${tempRegData.sentCode}`); document.getElementById('verificationInputArea').classList.remove('hidden'); }
+        window.verifyEmailCode = function() { if(document.getElementById('regEmailCode').value === tempRegData.sentCode) { tempRegData.emailVerified = true; document.getElementById('verificationMsg').innerText = "✅ 인증 성공"; document.getElementById('verificationMsg').className="text-[10px] mt-1 text-green-600 font-bold"; } else alert("불일치"); }
+        window.goToRegisterStep2 = function() { const name = document.getElementById('regName').value, pw = document.getElementById('regPw').value, phone = document.getElementById('regPhone').value; if(!name||!pw||!phone||!tempRegData.emailVerified) return alert("모든 항목 입력 및 이메일 인증이 필요합니다."); const digitsOnly = phone.replace(/[^0-9]/g, ''); tempRegData.name = name; tempRegData.pw = pw; tempRegData.phone = phone; tempRegData.last4 = digitsOnly.slice(-4); currentView = 'register2'; renderApp(); }
         window.submitRegistration = function() {
-            let sel = []; allSubjects.forEach((sub, i) => { if(document.getElementById(`chk_sub_${i}`).checked) sel.push({ name: sub, status: '대기', reason: '가입시 선택' }); });
+            let sel = []; allSubjects.forEach((sub, i) => { if(document.getElementById(`chk_sub_${i}`).checked) sel.push({ name: sub, status: '대기', reason: '가입 시 선택' }); });
             if(sel.length===0) return alert("최소 1개 수업 선택 필수");
             const fid = tempRegData.name + tempRegData.last4;
             users.push({ id: fid, pw: tempRegData.pw, name: tempRegData.name, phone: tempRegData.phone, role: 'instructor', subjects: sel });
             window.saveDataToFirebase();
-            alert(`가입 완료!\nID: ${fid}`); changeView('login');
+            alert(`가입 완료!\nID: ${fid}`); currentView = 'login'; renderApp();
         }
 
-        window.addSubjectField = function() { const c = document.getElementById('jobSubjectsContainer'); const div = document.createElement('div'); div.className = "flex space-x-2"; let opt = allSubjects.map(sub => `<option value="${sub}">${sub}</option>`).join(''); div.innerHTML = `<select class="flex-1 border p-2 text-sm job-subject-select">${opt}</select><button onclick="this.parentElement.remove()" class="text-red-500 bg-red-50 px-3 font-bold rounded">X</button>`; c.appendChild(div); }
-        
-        window.submitNewJob = function() {
-            const date = document.getElementById('jobDate').value, school = document.getElementById('jobSchool').value, target = document.getElementById('jobTarget').value, fee = document.getElementById('jobFee').value, time = document.getElementById('jobTime').value;
-            const subs = Array.from(document.querySelectorAll('.job-subject-select')).map(s => s.value);
-            if(!date || !school || subs.length===0) return alert("필수항목 누락");
-            jobs.push({ id: Date.now(), date, school, target, fee, time, subjects: subs, isOpen: false });
-            window.saveDataToFirebase();
-            alert('등록 완료!'); changeView('admin-jobs');
+        // 회원가입 뷰 렌더러
+        function renderRegisterViews(root) {
+            if(currentView === 'register1') {
+                root.innerHTML = `<div class="flex flex-col h-full bg-white overflow-y-auto px-6 py-8"><h2 class="text-2xl font-bold text-indigo-800 mb-2">회원가입 (1/2)</h2><div class="space-y-4"><div><label class="block text-sm font-bold text-gray-700">이름</label><input type="text" id="regName" class="w-full border p-2 rounded-lg text-sm" placeholder="실명 입력"></div><div><label class="block text-sm font-bold text-gray-700">이메일</label><div class="flex space-x-2"><input type="email" id="regEmail" class="w-full border p-2 rounded-lg text-sm" placeholder="이메일"><button onclick="window.sendVerificationCode()" class="bg-gray-200 px-3 py-1 rounded-lg text-sm font-bold">전송</button></div></div><div id="verificationInputArea" class="hidden"><div class="flex space-x-2"><input type="text" id="regEmailCode" class="w-full border p-2 rounded-lg text-sm" placeholder="인증번호"><button onclick="window.verifyEmailCode()" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold">확인</button></div><p id="verificationMsg" class="text-[10px] mt-1 text-gray-400">인증번호 입력</p></div><div><label class="block text-sm font-bold text-gray-700">전화번호</label><input type="tel" id="regPhone" class="w-full border p-2 rounded-lg text-sm" placeholder="010-0000-0000"></div><div><label class="block text-sm font-bold text-gray-700">비밀번호</label><input type="password" id="regPw" class="w-full border p-2 rounded-lg text-sm"></div></div><div class="flex space-x-3 mt-8 pb-8"><button onclick="window.changeView('login')" class="flex-1 bg-gray-200 py-3 rounded-xl font-bold">취소</button><button onclick="window.goToRegisterStep2()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold">다음</button></div></div>`;
+            } else {
+                let subjectsHtml = allSubjects.map((sub, index) => `<div class="border-b py-3"><label class="flex items-center space-x-2 font-medium text-sm"><input type="checkbox" id="chk_sub_${index}" class="w-4 h-4 text-indigo-600"><span>${sub}</span></label></div>`).join('');
+                root.innerHTML = `<div class="flex flex-col h-full bg-white px-6 py-8"><h2 class="text-2xl font-bold text-indigo-800 mb-2">회원가입 (2/2)</h2><div class="flex-1 overflow-y-auto border rounded-lg p-3 mb-4 shadow-inner">${subjectsHtml}</div><div class="flex space-x-3 pb-4"><button onclick="window.changeView('register1')" class="flex-1 bg-gray-200 font-bold py-3 rounded-xl">이전</button><button onclick="window.submitRegistration()" class="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl">가입 완료</button></div></div>`;
+            }
         }
 
-        window.forceOpenJob = function(id) { let j = jobs.find(x => x.id === id); if(j) { j.isOpen = true; window.saveDataToFirebase(); } }
-        window.manageApplication = function(id, st) { let a = applications.find(x => x.appId === id); if(a) { a.status = st; window.saveDataToFirebase(); } }
-        window.applyForSubject = function(jId, sN, sIdx) { applications.push({ appId: Date.now(), jobId: jId, instructorId: currentUser.id, subjectName: sN, subjectIndex: sIdx, status: '대기' }); window.saveDataToFirebase(); alert('지원 완료!'); }
-        window.updateInstSubStatus = function(iId, sN, st) { let ins = users.find(u => u.id === iId); if(ins) { let s = ins.subjects.find(x => x.name === sN); if(s) { s.status = st; window.saveDataToFirebase(); } } }
-        window.requestNewSubject = function(sN) { let r = prompt(`[${sN}] 신청 사유:`); if(r && r.trim()!=='') { currentUser.subjects.push({ name: sN, status: '대기', reason: r }); window.saveDataToFirebase(); alert('신청 완료!'); } }
+        function renderInstructorProfile() {
+            let mySubjectNames = currentUser.subjects.map(s => s.name);
+            let mySubjectsHtml = currentUser.subjects.map(sub => `<div class="flex justify-between items-center py-2 border-b last:border-0"><span class="text-xs w-2/3 truncate font-medium text-gray-700">${sub.name}</span><span class="text-[10px] font-bold ${sub.status==='승인'?'text-green-600':'text-yellow-600'}">${sub.status}</span></div>`).join('');
+            let unappliedSubjects = allSubjects.filter(sub => !mySubjectNames.includes(sub));
+            let unappliedHtml = unappliedSubjects.map(sub => `<div class="flex justify-between items-center py-2 border-b last:border-0"><span class="text-[11px] text-gray-500 w-2/3 truncate">${sub}</span><button onclick="window.requestNewSubject('${sub}')" class="border border-indigo-300 text-indigo-600 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">+ 신청</button></div>`).join('');
+            return `<div class="p-4 pb-24"><div class="bg-white rounded-2xl shadow-sm p-6 mb-4 flex items-center space-x-4"><div class="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-xl font-bold">${currentUser.name.charAt(0)}</div><div><h3 class="font-bold text-gray-800">${currentUser.name} 강사님</h3><p class="text-[11px] text-gray-500">ID: ${currentUser.id} | ${currentUser.phone}</p></div></div><div class="bg-white rounded-2xl shadow-sm p-6 mb-4"><h3 class="text-sm font-bold text-indigo-800 border-b pb-2 mb-2">나의 강의 자격</h3>${mySubjectsHtml || `<p class="text-xs text-gray-400 py-4 text-center">보유 자격이 없습니다.</p>`}</div><div class="bg-indigo-50 rounded-2xl shadow-sm p-6 border border-indigo-100"><h3 class="text-sm font-bold text-indigo-700 border-b border-indigo-100 pb-2 mb-2">추가 자격 신청 가능</h3>${unappliedHtml}</div></div>`;
+        }
+
+        function renderNewJobForm() {
+            return `<div class="p-4 pb-24 space-y-4 bg-white min-h-full">
+                <div><label class="text-[10px] font-bold text-indigo-600 uppercase">1. 출강 일정 (크게)</label><input type="text" id="jobDate" class="w-full border-b-2 border-gray-100 py-2 outline-none font-bold text-lg text-gray-800 focus:border-indigo-600" placeholder="예: 5월 15일(금)"></div>
+                <div><label class="text-[10px] font-bold text-indigo-600 uppercase">2. 상세 시간 (크게)</label><input type="text" id="jobTime" class="w-full border-b-2 border-gray-100 py-2 outline-none font-bold text-lg text-gray-800 focus:border-indigo-600" placeholder="예: 09:00 ~ 13:00"></div>
+                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3">
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">학교명</label><input type="text" id="jobSchool" class="w-full bg-transparent border-b border-gray-300 py-1 outline-none text-sm font-bold" placeholder="달꿈중학교"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">위치 및 대상</label><input type="text" id="jobTarget" class="w-full bg-transparent border-b border-gray-300 py-1 outline-none text-sm" placeholder="서울시 강남구 / 1학년 100명"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">강사료</label><input type="text" id="jobFee" class="w-full bg-transparent border-b border-gray-300 py-1 outline-none text-sm" placeholder="12만원"></div>
+                </div>
+                <div class="pt-4"><label class="text-sm font-bold text-gray-800 block mb-2">수업 모집 슬롯</label><div id="jobSubjectsContainer" class="space-y-2 mb-3"></div><button onclick="window.addSubjectField()" class="w-full bg-indigo-50 text-indigo-600 py-2 rounded-xl text-xs font-bold border border-indigo-100">+ 슬롯 추가</button></div>
+                <div class="flex gap-2 pt-4"><button onclick="window.changeView('admin-jobs')" class="flex-1 bg-gray-100 py-3 rounded-2xl font-bold text-sm text-gray-500">취소</button><button onclick="window.submitNewJob()" class="flex-2 bg-indigo-600 text-white py-3 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-100">공고 등록하기</button></div>
+            </div>`;
+        }
 
     </script>
+
+    <style>
+        @keyframes slide-down { 0% { opacity: 0; transform: translateY(-10px); } 100% { opacity: 1; transform: translateY(0); } }
+        .animate-slide-down { animation: slide-down 0.2s ease-out forwards; }
+        .flex-2 { flex: 2; }
+    </style>
 </body>
 </html>
